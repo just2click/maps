@@ -5,7 +5,7 @@ Frontend: React Hooks, SCSS, sweetalert, Axios, react-hook-google-maps\
 Backend: Node.js, Express, Mongodb, Axios, bcrypt
 
 Guest login details:
-email: test@gmail.com
+email: test@gmail.com\
 password: 1234
 
 ## Installation
