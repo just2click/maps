@@ -1,5 +1,7 @@
 # Maps
 
+A web application of maps & football.
+
 Technologies:\
 Frontend: React Hooks, SCSS, sweetalert, Axios, react-hook-google-maps\
 Backend: Node.js, Express, Mongodb, Axios, bcrypt
