@@ -120,9 +120,9 @@ export const MapPage = React.memo(function Map (props) {
   const { ref, map, google } = useGoogleMaps(
     API_KEY,
     {
-		  disableDefaultUI: true,
-		  disableDoubleClickZoom: true,
-		  zoom: 15,
+      disableDefaultUI: true,
+      disableDoubleClickZoom: true,
+      zoom: 15,
       center: {lat: 32.1257472, lng: 34.8258304},
       zoomControl: false,
       mapTypeControl: true,
