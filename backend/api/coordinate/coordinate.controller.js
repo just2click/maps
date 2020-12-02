@@ -11,10 +11,10 @@ const setRandomLocationByRadius = async (req, res)  => {
 }
 
 const getDistanceBetweenCoordinates = async (req, res) => {
-    const coordinates = req.body; // includes ball coordinate object & goal coordinate object.
-    const coordinatesKeys = Object.keys(coordinates)[0];
-    const ballCoords = JSON.parse(coordinatesKeys).ballPos;
-    const goalCoords = JSON.parse(coordinatesKeys).goalPos;
+    const coordinates  = req.body; // includes ball coordinate object & goal coordinate object.
+    const ballCoords = coordinates.ballPos;
+    const goalCoords = coordinates.goalPos;
+    
     if (goalCoords !== undefined && goalCoords.lat !== undefined) {
         try {
             const dist = await getDistanceBetweenPoints(ballCoords, goalCoords);
