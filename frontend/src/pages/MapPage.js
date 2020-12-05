@@ -2,9 +2,11 @@ import React from 'react';
 import { useGoogleMaps } from 'react-hook-google-maps';
 import coordinateService from '../services/CoordinateService';
 import swal from 'sweetalert';
+import { connect } from "react-redux";
+import {   setGoalFlag, setIsBallMoved, setIsGameOver,  } from '../reducers/actions'
 
   let localGoogle, localMap = null;
-  let goalFlag, isBallMoved, isGameOver = false;
+  // let goalFlag, isBallMoved, isGameOver = false;
   let lastBall, firstBall; // to initilaize ball and delete when ball is moved. 
   let interval = {};
 
@@ -45,12 +47,12 @@ import swal from 'sweetalert';
 const drawBallPos = async () => {
   try {
     const currPos = await setsetUserPosition();
-    if (!isBallMoved){
+    if (!this.props.isBallMoved){
       firstBall = drawIcon({
         icon: icons.ball,
         position: currPos
       }) 
-      isBallMoved = true;
+      setIsBallMoved();
       return currPos; 
     }
   }
@@ -101,8 +103,8 @@ const isGoal = async (ballCoordinates, goalCoordinates) => {
     const ballAndGoalPos = {ballPos: ballCoords, goalPos: goalCoords}
     const dist = await coordinateService.getDistBetween(ballAndGoalPos);
     if (dist.dist <= 30) { // it's too difficult when dist is 10, so I changed it to 30.
-      if (!isGameOver) {
-        isGameOver = true;
+      if (this.props.isGameOver) {
+        setIsGameOver();
         swal("Goal!!!");
         clearInterval(interval);
       }
@@ -138,8 +140,8 @@ export const MapPage = React.memo(function Map (props) {
   if (localMap) {
     const ballPos = drawBallPos();
     let goalPos;
-    if (!goalFlag) { // render goal only when needed.
-      goalFlag = true;
+    if (!props.goalFlag) { // render goal only when needed.
+      setGoalFlag();
       goalPos = drawGoalPos(ballPos);
     }
 
@@ -164,3 +166,24 @@ export const MapPage = React.memo(function Map (props) {
     </div>
   )
 })
+
+const mapPropsToProps = state => {
+  return {
+    goalFlag: state.goalFlag, 
+    isBallMoved: state.isBallMoved,
+    isGameOver: state.isGameOver  
+  };
+};
+
+const mapDispatchToProps = {
+  setGoalFlag,
+  setIsBallMoved,
+  setIsGameOver
+}
+
+React.memo(
+  connect(
+    mapPropsToProps,
+    mapDispatchToProps
+  )(MapPage)
+);
