@@ -3,11 +3,10 @@ import { useGoogleMaps } from 'react-hook-google-maps';
 import coordinateService from '../services/CoordinateService';
 import swal from 'sweetalert';
 import { connect } from "react-redux";
-import {   setGoalFlag, setIsBallMoved, setIsGameOver,  } from '../reducers/actions'
+import { setGoalFlag, setIsBallMoved, setIsGameOver } from '../reducers/actions'
 
   let localGoogle, localMap = null;
-  // let goalFlag, isBallMoved, isGameOver = false;
-  let lastBall, firstBall; // to initilaize ball and delete when ball is moved. 
+  let lastBall, firstBall; // to initilaize ball and delete when ball is moved.
   let interval = {};
 
   const icons = {
@@ -28,7 +27,7 @@ import {   setGoalFlag, setIsBallMoved, setIsGameOver,  } from '../reducers/acti
       }
     });
   }
-  
+
   const drawIcon = (data) => {
   const icon = {
     url: data.icon,
@@ -44,16 +43,16 @@ import {   setGoalFlag, setIsBallMoved, setIsGameOver,  } from '../reducers/acti
   });
 }
 
-const drawBallPos = async () => {
+const drawBallPos = async (props) => {
   try {
     const currPos = await setsetUserPosition();
-    if (!this.props.isBallMoved){
+    if (!props.isBallMoved){
       firstBall = drawIcon({
         icon: icons.ball,
         position: currPos
-      }) 
-      setIsBallMoved();
-      return currPos; 
+      })
+      props.setIsBallMoved();
+      return currPos;
     }
   }
   catch(e) {
@@ -92,30 +91,30 @@ const moveBallPos = () => {
     lastBall =  drawIcon({
       icon: icons.ball,
       position: {lat,lng}
-    }) 
+    })
   });
 }
 
-const isGoal = async (ballCoordinates, goalCoordinates) => {
+const isGoal = async (ballCoordinates, goalCoordinates, props) => {
   try {
     const ballCoords = await ballCoordinates;
     const goalCoords = await goalCoordinates;
     const ballAndGoalPos = {ballPos: ballCoords, goalPos: goalCoords}
     const dist = await coordinateService.getDistBetween(ballAndGoalPos);
     if (dist.dist <= 30) { // it's too difficult when dist is 10, so I changed it to 30.
-      if (this.props.isGameOver) {
-        setIsGameOver();
+      if (props.isGameOver) {
+        props.setIsGameOver();
         swal("Goal!!!");
         clearInterval(interval);
       }
-    } 
+    }
   }
   catch(e){
     console.error(e);
   }
 }
 
-// React.memo - React renders the component and memoizes the result. 
+// React.memo - React renders the component and memoizes the result.
 // if the new props are the same, React reuses the memoized result skipping the next rendering.
 export const MapPage = React.memo(function Map (props) {
   const API_KEY = process.env.REACT_APP_AUTH_KEY;
@@ -138,10 +137,10 @@ export const MapPage = React.memo(function Map (props) {
   localGoogle = google;
   localMap = map;
   if (localMap) {
-    const ballPos = drawBallPos();
+    const ballPos = drawBallPos(props);
     let goalPos;
     if (!props.goalFlag) { // render goal only when needed.
-      setGoalFlag();
+      props.setGoalFlag();
       goalPos = drawGoalPos(ballPos);
     }
 
@@ -151,12 +150,12 @@ export const MapPage = React.memo(function Map (props) {
       let lat = center.lat();
       let lng = center.lng()
       if (lat && lng) {
-         isGoal({lat, lng}, goalPos);
+         isGoal({lat, lng}, goalPos, props);
       }
-    }  
+    }
     , 3000);
   }
-  
+
   return (
     <div className="container">
       <div className="app-desc">
@@ -167,11 +166,11 @@ export const MapPage = React.memo(function Map (props) {
   )
 })
 
-const mapPropsToProps = state => {
+const mapStateToProps = state => {
   return {
-    goalFlag: state.goalFlag, 
+    goalFlag: state.goalFlag,
     isBallMoved: state.isBallMoved,
-    isGameOver: state.isGameOver  
+    isGameOver: state.isGameOver
   };
 };
 
@@ -181,9 +180,7 @@ const mapDispatchToProps = {
   setIsGameOver
 }
 
-React.memo(
-  connect(
-    mapPropsToProps,
-    mapDispatchToProps
-  )(MapPage)
-);
+export const MemoMapPage = connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(React.memo(MapPage))
