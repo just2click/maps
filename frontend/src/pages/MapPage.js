@@ -1,9 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleMaps } from 'react-hook-google-maps';
 import coordinateService from '../services/CoordinateService';
 import swal from 'sweetalert';
-import { connect } from "react-redux";
-import { setGoalFlag, setIsBallMoved, setIsGameOver } from '../reducers/actions'
 
   let localGoogle, localMap = null;
   let lastBall, firstBall; // to initilaize ball and delete when ball is moved.
@@ -14,7 +12,37 @@ import { setGoalFlag, setIsBallMoved, setIsGameOver } from '../reducers/actions'
     goal: 'https://res.cloudinary.com/dtwqtpteb/image/upload/v1606671859/f7corbmxuiucuaeu98uf.png'
   }
 
-  const setsetUserPosition = () => {
+// React.memo - React renders the component and memoizes the result.
+// if the new props are the same, React reuses the memoized result skipping the next rendering.
+export const MapPage = React.memo(function Map (props) {
+
+  const initialGoalFlag = useRef(false);
+  const hasBallMoved = useRef(false);
+  const initialIsGameOver = useRef(false);
+
+  const [isBallMoved, setIsBallMoved] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [goalFlag, setGoalFlag] = useState(false);
+
+  useEffect(() => {
+    if (hasBallMoved.current) {
+      setIsBallMoved(true);
+    }
+  }, [hasBallMoved])
+
+  useEffect(() => {
+    if (initialIsGameOver.current) {
+      setIsGameOver(true);
+    }
+  }, [initialIsGameOver])
+
+  useEffect(() => {
+    if (initialGoalFlag.current) {
+      setGoalFlag(true);
+    }
+  }, [initialGoalFlag])
+
+  const setUserPosition = () => {
     return new Promise((resolve, reject) => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
@@ -43,17 +71,17 @@ import { setGoalFlag, setIsBallMoved, setIsGameOver } from '../reducers/actions'
   });
 }
 
-const drawBallPos = async (props) => {
+const drawBallPos = async () => {
   try {
-    const currPos = await setsetUserPosition();
-    if (!props.isBallMoved){
+    const currPos = await setUserPosition();
+    if (!isBallMoved){
       firstBall = drawIcon({
         icon: icons.ball,
         position: currPos
       })
-      props.setIsBallMoved();
+      hasBallMoved.current = true;
       return currPos;
-    }
+    } //note
   }
   catch(e) {
     console.error(e);
@@ -95,15 +123,15 @@ const moveBallPos = () => {
   });
 }
 
-const isGoal = async (ballCoordinates, goalCoordinates, props) => {
+const isGoal = async (ballCoordinates, goalCoordinates) => {
   try {
     const ballCoords = await ballCoordinates;
     const goalCoords = await goalCoordinates;
     const ballAndGoalPos = {ballPos: ballCoords, goalPos: goalCoords}
     const dist = await coordinateService.getDistBetween(ballAndGoalPos);
     if (dist.dist <= 30) { // it's too difficult when dist is 10, so I changed it to 30.
-      if (props.isGameOver) {
-        props.setIsGameOver();
+      if (!isGameOver) {
+        initialIsGameOver.current = true;
         swal("Goal!!!");
         clearInterval(interval);
       }
@@ -114,9 +142,6 @@ const isGoal = async (ballCoordinates, goalCoordinates, props) => {
   }
 }
 
-// React.memo - React renders the component and memoizes the result.
-// if the new props are the same, React reuses the memoized result skipping the next rendering.
-export const MapPage = React.memo(function Map (props) {
   const API_KEY = process.env.REACT_APP_AUTH_KEY;
   const { ref, map, google } = useGoogleMaps(
     API_KEY,
@@ -137,10 +162,10 @@ export const MapPage = React.memo(function Map (props) {
   localGoogle = google;
   localMap = map;
   if (localMap) {
-    const ballPos = drawBallPos(props);
+    const ballPos = drawBallPos();
     let goalPos;
-    if (!props.goalFlag) { // render goal only when needed.
-      props.setGoalFlag();
+    if (!goalFlag) { // render goal only when needed.
+      initialGoalFlag.current = true;
       goalPos = drawGoalPos(ballPos);
     }
 
@@ -150,7 +175,7 @@ export const MapPage = React.memo(function Map (props) {
       let lat = center.lat();
       let lng = center.lng()
       if (lat && lng) {
-         isGoal({lat, lng}, goalPos, props);
+         isGoal({lat, lng}, goalPos);
       }
     }
     , 3000);
@@ -165,22 +190,3 @@ export const MapPage = React.memo(function Map (props) {
     </div>
   )
 })
-
-const mapStateToProps = state => {
-  return {
-    goalFlag: state.goalFlag,
-    isBallMoved: state.isBallMoved,
-    isGameOver: state.isGameOver
-  };
-};
-
-const mapDispatchToProps = {
-  setGoalFlag,
-  setIsBallMoved,
-  setIsGameOver
-}
-
-export const MemoMapPage = connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(React.memo(MapPage))

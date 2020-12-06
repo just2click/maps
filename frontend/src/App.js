@@ -8,7 +8,7 @@ import rootReducer from "./reducers";
 
 import './assets/styles/global.scss';
 import { HomePage }  from './pages/HomePage';
-import  { MemoMapPage }  from './pages/MapPage';
+import  { MapPage }  from './pages/MapPage';
 import Header from './components/Header';
 
 const history = createBrowserHistory();
@@ -23,7 +23,7 @@ export default class App extends Component {
           <Router history={history}>
               <Switch>
                 <Route component={ HomePage } path='/' exact></Route>
-                <Route component={ MemoMapPage } path='/map'></Route>
+                <Route component={ MapPage } path='/map'></Route>
               </Switch>
           </Router>
         </Provider>
