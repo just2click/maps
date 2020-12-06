@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { useGoogleMaps } from 'react-hook-google-maps';
 import coordinateService from '../services/CoordinateService';
 import swal from 'sweetalert';
@@ -15,32 +15,9 @@ import swal from 'sweetalert';
 // React.memo - React renders the component and memoizes the result.
 // if the new props are the same, React reuses the memoized result skipping the next rendering.
 export const MapPage = React.memo(function Map (props) {
-
-  const initialGoalFlag = useRef(false);
-  const hasBallMoved = useRef(false);
+  const initialIsBallMoved = useRef(false);
   const initialIsGameOver = useRef(false);
-
-  const [isBallMoved, setIsBallMoved] = useState(false);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [goalFlag, setGoalFlag] = useState(false);
-
-  useEffect(() => {
-    if (hasBallMoved.current) {
-      setIsBallMoved(true);
-    }
-  }, [hasBallMoved])
-
-  useEffect(() => {
-    if (initialIsGameOver.current) {
-      setIsGameOver(true);
-    }
-  }, [initialIsGameOver])
-
-  useEffect(() => {
-    if (initialGoalFlag.current) {
-      setGoalFlag(true);
-    }
-  }, [initialGoalFlag])
+  const initialGoalFlag = useRef(false);
 
   const setUserPosition = () => {
     return new Promise((resolve, reject) => {
@@ -57,90 +34,103 @@ export const MapPage = React.memo(function Map (props) {
   }
 
   const drawIcon = (data) => {
-  const icon = {
-    url: data.icon,
-    size: new localGoogle.maps.Size(70, 70),
-    origin: new localGoogle.maps.Point(0, 0),
-    anchor: new localGoogle.maps.Point(9, 12),
-    scaledSize: new localGoogle.maps.Size(70, 70)
+    const icon = {
+      url: data.icon,
+      size: new localGoogle.maps.Size(70, 70),
+      origin: new localGoogle.maps.Point(0, 0),
+      anchor: new localGoogle.maps.Point(9, 12),
+      scaledSize: new localGoogle.maps.Size(70, 70)
+    }
+    return new localGoogle.maps.Marker({
+      map: localMap,
+      position: data.position,
+      icon
+    });
   }
-  return new localGoogle.maps.Marker({
-    map: localMap,
-    position: data.position,
-    icon
-  });
-}
 
-const drawBallPos = async () => {
-  try {
-    const currPos = await setUserPosition();
-    if (!isBallMoved){
-      firstBall = drawIcon({
-        icon: icons.ball,
-        position: currPos
+  const drawBallPos = async () => {
+    try {
+      const currPos = await setUserPosition();
+      if (!initialIsBallMoved.current){
+        firstBall = drawIcon({
+          icon: icons.ball,
+          position: currPos
+        })
+        initialIsBallMoved.current = true;
+        return currPos;
+      } //note
+    }
+    catch(e) {
+      console.error(e);
+    }
+  }
+
+  const drawGoalPos = async (pos) => {
+    const ballPos = await pos;
+    let goalPos;
+    try {
+      if (!ballPos) {
+        goalPos = { lat: 32.12039583617502, lng: 34.83239034598204 };
+      }
+      else {
+        goalPos = await coordinateService.setRandomLocationByRadius(ballPos);
+      }
+      drawIcon({
+        icon: icons.goal,
+        position: goalPos
       })
-      hasBallMoved.current = true;
-      return currPos;
-    } //note
-  }
-  catch(e) {
-    console.error(e);
-  }
-}
-
-const drawGoalPos = async (pos) => {
-  const ballPos = await pos;
-  let goalPos;
-  try {
-    if (!ballPos) {
-      goalPos = { lat: 32.12039583617502, lng: 34.83239034598204 };
+      return goalPos;
     }
-    else {
-      goalPos = await coordinateService.setRandomLocationByRadius(ballPos);
+    catch(e){
+      console.error(e);
     }
-    drawIcon({
-      icon: icons.goal,
-      position: goalPos
-    })
-    return goalPos;
   }
-  catch(e){
-    console.error(e);
+
+  const moveBallPos = () => {
+    localGoogle.maps.event.addListener(localMap, "center_changed", function() {
+      let center = this.getCenter();
+      let lat = center.lat();
+      let lng = center.lng();
+      if (firstBall) firstBall.setMap(null);
+      if (lastBall) lastBall.setMap(null);
+      lastBall =  drawIcon({
+        icon: icons.ball,
+        position: {lat,lng}
+      })
+    });
   }
-}
 
-const moveBallPos = () => {
-  localGoogle.maps.event.addListener(localMap, "center_changed", function() {
-    let center = this.getCenter();
-    let lat = center.lat();
-    let lng = center.lng();
-    if (firstBall) firstBall.setMap(null);
-    if (lastBall) lastBall.setMap(null);
-    lastBall =  drawIcon({
-      icon: icons.ball,
-      position: {lat,lng}
-    })
-  });
-}
-
-const isGoal = async (ballCoordinates, goalCoordinates) => {
-  try {
-    const ballCoords = await ballCoordinates;
-    const goalCoords = await goalCoordinates;
-    const ballAndGoalPos = {ballPos: ballCoords, goalPos: goalCoords}
-    const dist = await coordinateService.getDistBetween(ballAndGoalPos);
-    if (dist.dist <= 30) { // it's too difficult when dist is 10, so I changed it to 30.
-      if (!isGameOver) {
-        initialIsGameOver.current = true;
-        swal("Goal!!!");
-        clearInterval(interval);
+  const isGoal = async (ballCoordinates, goalCoordinates) => {
+    try {
+      const ballCoords = await ballCoordinates;
+      const goalCoords = await goalCoordinates;
+      const ballAndGoalPos = {ballPos: ballCoords, goalPos: goalCoords}
+      const dist = await coordinateService.getDistBetween(ballAndGoalPos);
+      if (dist.dist <= 30) { // it's too difficult when dist is 10, so I changed it to 30.
+        if (!initialIsGameOver.current) {
+          initialIsGameOver.current = true;
+          swal("Goal!!!");
+          clearInterval(interval);
+        }
       }
     }
+    catch(e) {
+      console.error(e);
+    }
   }
-  catch(e){
-    console.error(e);
+
+  const setLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(setPosition);
+    } else {
+      swal("Geolocation is not supported by this browser.");
+    }
   }
-}
+  const setPosition = (position) => {
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    map.setCenter(new google.maps.LatLng(lat, lng));
+  }
 
   const API_KEY = process.env.REACT_APP_AUTH_KEY;
   const { ref, map, google } = useGoogleMaps(
@@ -161,10 +151,12 @@ const isGoal = async (ballCoordinates, goalCoordinates) => {
 
   localGoogle = google;
   localMap = map;
+
   if (localMap) {
+    setLocation();
     const ballPos = drawBallPos();
     let goalPos;
-    if (!goalFlag) { // render goal only when needed.
+    if (!initialGoalFlag.current) { // render goal only when needed.
       initialGoalFlag.current = true;
       goalPos = drawGoalPos(ballPos);
     }
